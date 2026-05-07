@@ -20,7 +20,7 @@ canvas{display:block;}
 
 .screen{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:100;}
 .hidden{display:none!important;}
-#menuCanvas{position:fixed;top:0;left:0;z-index:90;}
+#menuCanvas{position:fixed;top:0;left:0;z-index:90;pointer-events:none;}
 
 /* LOGO */
 .game-logo{font-family:'Creepster',cursive;font-size:clamp(3rem,12vw,6rem);color:#2ecc71;text-shadow:0 0 30px #2ecc71,0 0 60px rgba(46,204,113,0.4);margin:0 0 4px;letter-spacing:4px;animation:logoPulse 2.5s ease-in-out infinite;}
@@ -102,13 +102,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 /* PAUSE BUTTON */
 #pauseBtn{
     position:fixed;top:8px;right:12px;
-    width:38px;height:38px;border-radius:10px;
-    background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);
-    z-index:60;display:flex;align-items:center;justify-content:center;
-    font-size:1.2rem;cursor:pointer;pointer-events:all;
-    transition:background 0.15s;
+    width:48px;height:48px;border-radius:12px;
+    background:rgba(0,0,0,0.65);border:2px solid rgba(255,255,255,0.25);
+    z-index:300;display:flex;align-items:center;justify-content:center;
+    font-size:1.4rem;cursor:pointer;pointer-events:all;
+    transition:background 0.15s;-webkit-tap-highlight-color:rgba(255,255,255,0.2);
 }
-#pauseBtn:active{background:rgba(255,255,255,0.15);}
+#pauseBtn:active{background:rgba(255,255,255,0.2);}
 
 /* MUSIC BTN in pause */
 .music-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 0;}
@@ -135,7 +135,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 #multiplierBadge{position:fixed;top:46px;right:60px;font-family:'Creepster',cursive;font-size:1.1rem;color:#f1c40f;text-shadow:0 0 10px #f1c40f;pointer-events:none;z-index:55;opacity:0;transition:opacity 0.3s;}
 
 /* CONTROLS */
-#joystick{position:fixed;bottom:36px;left:36px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.12);z-index:50;touch-action:none;}
+#joystick{position:fixed;bottom:36px;left:36px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.12);z-index:200;touch-action:none;}
 #stick{position:absolute;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,0.3);top:34px;left:34px;box-shadow:0 2px 10px rgba(0,0,0,0.5);}
 
 /* SHOOT AREA HINT */
@@ -255,7 +255,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 </div>
 
 <!-- ══ HUD ══ -->
-<div id="hud">
+<div id="hud" style="display:none">
     <span>❤️</span>
     <div id="hpBar"><div id="hpFill" style="width:100%"></div></div>
     <div id="waveTag">1. hullám</div>
@@ -266,7 +266,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
         <span id="hudKills">☠️ 0</span>
     </div>
 </div>
-<div id="pauseBtn" onclick="pauseGame()">⏸</div>
+<div id="pauseBtn" style="display:none">⏸</div>
 
 <!-- BOSS BAR -->
 <div id="bossBar"><div id="bossBarLabel">👹 BOSS</div><div id="bossBarBg"><div id="bossBarFill" style="width:100%"></div></div></div>
@@ -282,9 +282,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <div id="levelUpMsg">⬆ SZINTLÉPÉS!</div>
 
 <canvas id="gameCanvas"></canvas>
-<div id="joystick"><div id="stick"></div></div>
-<div id="shootHint">🔫</div>
-<canvas id="minimap"></canvas>
+<div id="joystick" style="display:none"><div id="stick"></div></div>
+<div id="shootHint" style="display:none">🔫</div>
+<canvas id="minimap" style="display:none"></canvas>
 
 <script>
 /* ══ SERVICE WORKER ══ */
@@ -458,6 +458,19 @@ canvas.addEventListener("mousemove",e=>{
     joy.angle=Math.atan2(dy,dx);
 });
 
+/* ══ PAUSE BUTTON TOUCH ══ */
+const pauseBtn=document.getElementById("pauseBtn");
+pauseBtn.addEventListener("touchstart",e=>{
+    e.preventDefault();e.stopPropagation();
+    if(gameRunning&&!gamePaused) pauseGame();
+    else if(gamePaused) resumeGame();
+},{passive:false});
+pauseBtn.addEventListener("click",e=>{
+    e.preventDefault();
+    if(gameRunning&&!gamePaused) pauseGame();
+    else if(gamePaused) resumeGame();
+});
+
 /* ══ PAUSE / RESUME ══ */
 function pauseGame(){
     if(!gameRunning||gamePaused)return;
@@ -486,9 +499,10 @@ function exitToMenu(){
     document.getElementById("pauseScreen").classList.add("hidden");
     gameRunning=false;gamePaused=false;
     music.pause();music.currentTime=0;
+    showMenuUI();
     menuRunning=true;menuLoop();updateBestDisplay();
     document.getElementById("mainMenu").classList.remove("hidden");
-    document.getElementById("pauseBtn").innerText="⏸";
+    pauseBtn.innerText="⏸";
 }
 
 /* ══ SAVE / LOAD ══ */
@@ -534,10 +548,10 @@ function loadAndStart(){
     if(!raw){setSaveStatus2();return;}
     document.getElementById("mainMenu").classList.add("hidden");
     menuRunning=false;
+    showGameUI();
     music.volume=volMusic;
     if(musicEnabled)music.play().catch(()=>{});
     gameRunning=true;gamePaused=false;
-    // init minimal state then load
     bullets=[];zombies=[];particles=[];pickups=[];decals=[];
     shakePow=0;shootTimer=0;shakeX=0;shakeY=0;joy.angle=0;
     comboTimer=0;pausedTime=0;
@@ -988,20 +1002,39 @@ function gameOver(){
 }
 
 /* ══ START / RESTART / MENU ══ */
+function showGameUI(){
+    menuCanvas.style.display="none";
+    document.getElementById("joystick").style.display="";
+    document.getElementById("shootHint").style.display="";
+    document.getElementById("hud").style.display="";
+    document.getElementById("minimap").style.display="";
+    pauseBtn.style.display="";
+}
+function showMenuUI(){
+    menuCanvas.style.display="";
+    document.getElementById("joystick").style.display="none";
+    document.getElementById("shootHint").style.display="none";
+    document.getElementById("hud").style.display="none";
+    document.getElementById("minimap").style.display="none";
+    pauseBtn.style.display="none";
+}
 function startGame(){
     menuRunning=false;
     document.getElementById("mainMenu").classList.add("hidden");
+    showGameUI();
     music.volume=volMusic;if(musicEnabled)music.play().catch(()=>{});
     gameRunning=true;gamePaused=false;initGame();gameLoop();
 }
 function restartGame(){
     document.getElementById("gameOverScreen").classList.add("hidden");
+    showGameUI();
     music.currentTime=0;if(musicEnabled)music.play().catch(()=>{});
     gameRunning=true;gamePaused=false;initGame();gameLoop();
 }
 function backToMenu(){
     document.getElementById("gameOverScreen").classList.add("hidden");
     music.pause();music.currentTime=0;
+    showMenuUI();
     menuRunning=true;menuLoop();updateBestDisplay();
     document.getElementById("mainMenu").classList.remove("hidden");
     document.getElementById("pauseBtn").innerText="⏸";

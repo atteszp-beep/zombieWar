@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Zombie War</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2ecc71">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<meta name="apple-mobile-web-app-title" content="Zombie War">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Oswald:wght@400;700&display=swap');
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;overflow:hidden;background:#0a0a0a;color:white;font-family:'Oswald',Arial,sans-serif;touch-action:none;}
+canvas{display:block;}
+
+.screen{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:100;}
+.hidden{display:none!important;}
+#menuCanvas{position:fixed;top:0;left:0;z-index:90;}
+
+/* LOGO */
+.game-logo{font-family:'Creepster',cursive;font-size:clamp(3rem,12vw,6rem);color:#2ecc71;text-shadow:0 0 30px #2ecc71,0 0 60px rgba(46,204,113,0.4);margin:0 0 4px;letter-spacing:4px;animation:logoPulse 2.5s ease-in-out infinite;}
+@keyframes logoPulse{0%,100%{text-shadow:0 0 30px #2ecc71,0 0 60px rgba(46,204,113,0.4);}50%{text-shadow:0 0 50px #2ecc71,0 0 100px rgba(46,204,113,0.6),0 0 150px rgba(46,204,113,0.2);}}
+.logo-sub{font-size:0.9rem;letter-spacing:6px;color:#888;margin-bottom:36px;text-transform:uppercase;}
+
+/* CARDS */
+.menu-card{background:rgba(20,20,20,0.9);border:1px solid rgba(46,204,113,0.2);border-radius:18px;padding:28px 36px;min-width:min(320px,88vw);display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 0 40px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.05);}
+.best-score{font-size:0.8rem;letter-spacing:2px;color:#555;margin-bottom:4px;text-transform:uppercase;}
+.best-score span{color:#f1c40f;font-size:1.1rem;font-weight:700;}
+.divider{width:100%;height:1px;background:rgba(255,255,255,0.07);margin:4px 0;}
+
+/* BUTTONS */
+.btn{width:100%;padding:14px 0;font-family:'Oswald',Arial,sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;text-transform:uppercase;transition:transform 0.12s,filter 0.12s,box-shadow 0.12s;position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);transition:left 0.4s;}
+.btn:hover::after{left:150%;}
+.btn:active{transform:scale(0.97);filter:brightness(0.9);}
+.btn-play{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;box-shadow:0 4px 20px rgba(46,204,113,0.4);font-size:1.2rem;padding:16px 0;}
+.btn-play:hover{box-shadow:0 6px 28px rgba(46,204,113,0.6);}
+.btn-secondary{background:rgba(255,255,255,0.07);color:#ccc;border:1px solid rgba(255,255,255,0.1);}
+.btn-secondary:hover{background:rgba(255,255,255,0.12);color:#fff;}
+.btn-red{background:linear-gradient(135deg,#c0392b,#e74c3c);color:white;box-shadow:0 4px 20px rgba(231,76,60,0.35);}
+
+/* PANELS */
+.panel{position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);}
+.panel-box{background:#141414;border:1px solid rgba(46,204,113,0.25);border-radius:18px;padding:28px 30px;width:min(360px,92vw);max-height:90vh;overflow-y:auto;}
+.panel-title{font-family:'Creepster',cursive;font-size:1.8rem;color:#2ecc71;text-align:center;margin:0 0 18px;letter-spacing:2px;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;margin:10px 0;}
+.setting-label{font-size:0.9rem;color:#aaa;letter-spacing:1px;}
+input[type=range]{-webkit-appearance:none;width:130px;height:6px;background:#333;border-radius:3px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#2ecc71;cursor:pointer;}
+.diff-btns{display:flex;gap:6px;}
+.diff-btn{padding:5px 12px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#666;font-size:0.8rem;cursor:pointer;font-family:'Oswald',Arial,sans-serif;letter-spacing:1px;transition:all 0.15s;}
+.diff-btn.active{border-color:#2ecc71;color:#2ecc71;background:rgba(46,204,113,0.1);}
+.howto-row{display:flex;align-items:flex-start;gap:12px;margin:10px 0;}
+.howto-icon{font-size:1.4rem;width:32px;text-align:center;flex-shrink:0;}
+.howto-text{font-size:0.88rem;color:#bbb;line-height:1.4;}
+.howto-text strong{color:#2ecc71;}
+.zombie-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#aaa;}
+.legend-dot{width:12px;height:12px;border-radius:50%;}
+
+/* GAME OVER */
+#gameOverScreen{background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);}
+.go-title{font-family:'Creepster',cursive;font-size:clamp(2.5rem,10vw,5rem);color:#e74c3c;text-shadow:0 0 30px #e74c3c;margin:0 0 6px;animation:goShake 0.5s ease;}
+@keyframes goShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+.go-card{background:rgba(20,20,20,0.95);border:1px solid rgba(231,76,60,0.25);border-radius:16px;padding:22px 28px;min-width:min(300px,86vw);display:flex;flex-direction:column;gap:8px;}
+.go-stat{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.95rem;}
+.go-stat:last-child{border-bottom:none;}
+.go-stat-label{color:#777;letter-spacing:1px;font-size:0.8rem;}
+.go-stat-val{font-size:1.15rem;font-weight:700;}
+.go-stat-val.gold{color:#f1c40f;}.go-stat-val.green{color:#2ecc71;}.go-stat-val.red{color:#e74c3c;}
+.go-new-best{text-align:center;font-size:0.85rem;letter-spacing:3px;color:#f1c40f;text-transform:uppercase;animation:blink 0.8s steps(1) infinite;}
+@keyframes blink{50%{opacity:0;}}
+.go-btns{display:flex;gap:10px;margin-top:6px;}
+.go-btns .btn{flex:1;}
+
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:8px 12px;background:linear-gradient(to bottom,rgba(0,0,0,0.7),transparent);z-index:50;font-size:0.82rem;pointer-events:none;}
+#hpBar{flex:1;max-width:140px;height:13px;background:rgba(255,255,255,0.1);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
+#hpFill{height:100%;background:#2ecc71;border-radius:7px;transition:width 0.2s,background 0.3s;}
+#waveTag{background:rgba(230,126,34,0.85);padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.75rem;letter-spacing:1px;}
+#xpBarWrap{flex:1;max-width:80px;height:7px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;}
+#xpBar{height:100%;background:#9b59b6;border-radius:4px;transition:width 0.15s;}
+#hudRight{margin-left:auto;display:flex;gap:10px;align-items:center;}
+#hudLevel{background:rgba(155,89,182,0.7);padding:2px 8px;border-radius:12px;font-size:0.78rem;font-weight:700;}
+#hudScore{font-size:0.85rem;font-weight:700;color:#f1c40f;}
+
+/* BOSS BAR */
+#bossBar{
+    position:fixed;top:46px;left:50%;transform:translateX(-50%);
+    width:min(340px,80vw);z-index:55;pointer-events:none;
+    opacity:0;transition:opacity 0.4s;
+}
+#bossBarLabel{font-family:'Creepster',cursive;font-size:1rem;color:#e74c3c;text-align:center;letter-spacing:2px;text-shadow:0 0 10px #e74c3c;}
+#bossBarBg{background:rgba(0,0,0,0.6);border-radius:8px;height:16px;overflow:hidden;border:1px solid rgba(231,76,60,0.4);}
+#bossBarFill{height:100%;background:linear-gradient(90deg,#c0392b,#e74c3c);border-radius:8px;transition:width 0.2s;}
+
+/* BUFFS */
+#buffsHud{position:fixed;bottom:160px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:55;pointer-events:none;}
+.buff-chip{background:rgba(0,0,0,0.7);border-radius:20px;padding:4px 10px;font-size:0.75rem;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.15);}
+.buff-chip .buff-bar{width:40px;height:4px;background:#333;border-radius:2px;overflow:hidden;margin-left:4px;}
+.buff-chip .buff-fill{height:100%;border-radius:2px;}
+
+/* COMBO */
+#comboDisplay{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-family:'Creepster',cursive;font-size:clamp(2rem,8vw,4rem);
+    pointer-events:none;z-index:210;
+    opacity:0;text-align:center;
+    transition:opacity 0.2s;
+}
+#multiplierBadge{
+    position:fixed;top:46px;right:110px;
+    font-family:'Creepster',cursive;font-size:1.1rem;
+    color:#f1c40f;text-shadow:0 0 10px #f1c40f;
+    pointer-events:none;z-index:55;
+    opacity:0;transition:opacity 0.3s;
+}
+
+/* CONTROLS */
+#joystick{position:fixed;bottom:36px;left:36px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.12);z-index:50;touch-action:none;}
+#stick{position:absolute;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,0.3);top:34px;left:34px;box-shadow:0 2px 10px rgba(0,0,0,0.5);}
+#shootBtn{position:fixed;bottom:50px;right:44px;width:100px;height:100px;border-radius:50%;background:rgba(231,76,60,0.2);border:2px solid rgba(231,76,60,0.45);z-index:50;display:flex;align-items:center;justify-content:center;font-size:2rem;touch-action:none;user-select:none;transition:background 0.1s;}
+#shootBtn.active{background:rgba(231,76,60,0.45);}
+
+/* EFFECTS */
+#waveAnnounce{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Creepster',cursive;font-size:clamp(2.5rem,10vw,5rem);font-weight:bold;color:#e67e22;text-shadow:0 0 40px #e67e22;pointer-events:none;z-index:200;opacity:0;transition:opacity 0.4s;letter-spacing:4px;}
+#dmgFlash{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(231,76,60,0);pointer-events:none;z-index:150;transition:background 0.1s;}
+#shieldFlash{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(52,152,219,0);pointer-events:none;z-index:149;transition:background 0.12s;}
+.floatText{position:fixed;font-weight:bold;font-size:1rem;pointer-events:none;z-index:160;font-family:'Oswald',Arial,sans-serif;animation:floatUp 1s forwards;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-60px);}}
+#levelUpMsg{position:fixed;top:18%;left:50%;transform:translateX(-50%);font-family:'Creepster',cursive;font-size:2rem;color:#f1c40f;text-shadow:0 0 20px #f1c40f;pointer-events:none;z-index:200;opacity:0;transition:opacity 0.5s;letter-spacing:3px;}
+#betweenWaveMsg{position:fixed;bottom:160px;left:50%;transform:translateX(-50%);font-size:0.85rem;color:#2ecc71;letter-spacing:2px;pointer-events:none;z-index:200;opacity:0;transition:opacity 0.5s;text-transform:uppercase;text-shadow:0 0 10px #2ecc71;}
+#minimap{position:fixed;top:56px;right:10px;width:88px;height:88px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);z-index:50;overflow:hidden;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<canvas id="menuCanvas"></canvas>
+
+<!-- MAIN MENU -->
+<div id="mainMenu" class="screen">
+    <h1 class="game-logo">☣ ZOMBIE WAR</h1>
+    <p class="logo-sub">Éld túl a hordákat</p>
+    <div class="menu-card">
+        <div class="best-score">Legjobb pontszám: <span id="bestScoreDisplay">0</span></div>
+        <div class="divider"></div>
+        <button class="btn btn-play" onclick="startGame()">▶ &nbsp;JÁTÉK INDÍTÁSA</button>
+        <button class="btn btn-secondary" onclick="showPanel('howtoPanel')">📖 &nbsp;Hogyan játssz?</button>
+        <button class="btn btn-secondary" onclick="showPanel('settingsPanel')">⚙️ &nbsp;Beállítások</button>
+        <button class="btn btn-install hidden" id="installBtn" onclick="installPWA()">📲 &nbsp;Telepítés (APK)</button>
+    </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOverScreen" class="screen hidden">
+    <div class="go-title">💀 GAME OVER</div>
+    <div id="goNewBest" class="go-new-best hidden">★ ÚJ REKORD! ★</div>
+    <div class="go-card">
+        <div class="go-stat"><span class="go-stat-label">PONTSZÁM</span><span class="go-stat-val gold" id="goScore">0</span></div>
+        <div class="go-stat"><span class="go-stat-label">LEGJOBB</span><span class="go-stat-val gold" id="goBest">0</span></div>
+        <div class="go-stat"><span class="go-stat-label">ELÉRT HULLÁM</span><span class="go-stat-val green" id="goWave">0</span></div>
+        <div class="go-stat"><span class="go-stat-label">MEGÖLT ZOMBIK</span><span class="go-stat-val red" id="goKills">0</span></div>
+        <div class="go-stat"><span class="go-stat-label">MAX COMBO</span><span class="go-stat-val" id="goCombo">0</span></div>
+        <div class="go-stat"><span class="go-stat-label">ELÉRT SZINT</span><span class="go-stat-val" id="goLevel">1</span></div>
+        <div class="go-stat"><span class="go-stat-label">IDŐ</span><span class="go-stat-val" id="goTime">0s</span></div>
+    </div>
+    <div class="go-btns" style="min-width:min(300px,86vw);margin-top:12px;">
+        <button class="btn btn-red" onclick="restartGame()">🔄 Újra</button>
+        <button class="btn btn-secondary" onclick="backToMenu()">🏠 Menü</button>
+    </div>
+</div>
+
+<!-- HOW TO PLAY -->
+<div id="howtoPanel" class="panel hidden">
+    <div class="panel-box">
+        <div class="panel-title">📖 Hogyan játssz?</div>
+        <div class="howto-row"><div class="howto-icon">🕹️</div><div class="howto-text"><strong>Mozgás:</strong> Húzd a bal joystick-ot</div></div>
+        <div class="howto-row"><div class="howto-icon">🔫</div><div class="howto-text"><strong>Lövés:</strong> Tartsd a jobb gombot (auto-célzás) vagy érintsd a képernyő jobb felét</div></div>
+        <div class="howto-row"><div class="howto-icon">🌊</div><div class="howto-text"><strong>Hullámok:</strong> Minden hullámban több és erősebb zombi – öld le mindet!</div></div>
+        <div class="howto-row"><div class="howto-icon">👹</div><div class="howto-text"><strong>Boss:</strong> Minden 5. hullámban hatalmas boss jelenik meg!</div></div>
+        <div class="howto-row"><div class="howto-icon">🎁</div><div class="howto-text"><strong>Power-upok:</strong> ❤️ Gyógyítás &nbsp;⚡ Sebesség &nbsp;🔥 Rapid-fire &nbsp;🛡️ Pajzs &nbsp;💣 Gránát</div></div>
+        <div class="howto-row"><div class="howto-icon">💥</div><div class="howto-text"><strong>Combo:</strong> Gyorsan öld a zombikat egymás után – szorzót kapsz és bónusz pontot!</div></div>
+        <div class="howto-row"><div class="howto-icon">⭐</div><div class="howto-text"><strong>Szintlépés:</strong> Ölésekért XP, szintlépésnél állandó bónusz</div></div>
+        <div style="margin-top:14px;font-size:0.8rem;color:#666;letter-spacing:1px;text-transform:uppercase;">Zombi típusok</div>
+        <div class="zombie-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div> Normál</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#e67e22"></div> Gyors</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#8e44ad"></div> Tank</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Boss 👹</div>
+        </div>
+        <button class="btn btn-secondary" style="margin-top:16px;" onclick="hidePanel('howtoPanel')">✕ Bezárás</button>
+    </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settingsPanel" class="panel hidden">
+    <div class="panel-box">
+        <div class="panel-title">⚙️ Beállítások</div>
+        <div class="setting-row"><span class="setting-label">🎵 ZENE</span><input type="range" id="volMusic" min="0" max="100" value="40" oninput="setVolume()"></div>
+        <div class="setting-row"><span class="setting-label">🔊 HANG</span><input type="range" id="volSfx" min="0" max="100" value="35" oninput="setVolume()"></div>
+        <div class="divider" style="margin:14px 0;"></div>
+        <div class="setting-row">
+            <span class="setting-label">NEHÉZSÉG</span>
+            <div class="diff-btns">
+                <div class="diff-btn active" id="diff-easy" onclick="setDiff('easy')">KÖNNYŰ</div>
+                <div class="diff-btn" id="diff-normal" onclick="setDiff('normal')">NORMÁL</div>
+                <div class="diff-btn" id="diff-hard" onclick="setDiff('hard')">NEHÉZ</div>
+            </div>
+        </div>
+        <div class="divider" style="margin:14px 0;"></div>
+        <div class="setting-row"><span class="setting-label">LEGJOBB PONTSZÁM</span><span style="color:#f1c40f;font-weight:700;" id="settingsBest">0</span></div>
+        <button class="btn btn-secondary" onclick="resetBest()" style="width:100%;font-size:0.8rem;padding:9px;margin-bottom:8px;">🗑 Rekord törlése</button>
+        <button class="btn btn-secondary" onclick="hidePanel('settingsPanel')">✕ Bezárás</button>
+    </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+    <span>❤️</span>
+    <div id="hpBar"><div id="hpFill" style="width:100%"></div></div>
+    <div id="waveTag">1. hullám</div>
+    <div id="xpBarWrap"><div id="xpBar" style="width:0%"></div></div>
+    <div id="hudRight">
+        <span id="hudLevel">Lv 1</span>
+        <span id="hudScore">0</span>
+        <span id="hudKills">☠️ 0</span>
+    </div>
+</div>
+
+<!-- BOSS BAR -->
+<div id="bossBar">
+    <div id="bossBarLabel">👹 BOSS</div>
+    <div id="bossBarBg"><div id="bossBarFill" style="width:100%"></div></div>
+</div>
+
+<!-- BUFFS -->
+<div id="buffsHud"></div>
+<div id="multiplierBadge"></div>
+<div id="comboDisplay"></div>
+
+<div id="waveAnnounce"></div>
+<div id="betweenWaveMsg">Következő hullám hamarosan...</div>
+<div id="dmgFlash"></div>
+<div id="shieldFlash"></div>
+<div id="levelUpMsg">⬆ SZINTLÉPÉS!</div>
+
+<canvas id="gameCanvas"></canvas>
+<div id="joystick"><div id="stick"></div></div>
+<div id="shootBtn">🔫</div>
+<canvas id="minimap"></canvas>
+
+<script>
+/* ══ MENU BG ══ */
+const menuCanvas=document.getElementById("menuCanvas");
+const mctx2=menuCanvas.getContext("2d");
+let menuZombies=[],menuRunning=true;
+function resizeMenuCanvas(){menuCanvas.width=innerWidth;menuCanvas.height=innerHeight;}
+resizeMenuCanvas();
+window.addEventListener("resize",resizeMenuCanvas);
+const zombieImgMenu=new Image(); zombieImgMenu.src="zombie/img/zombie.png";
+for(let i=0;i<14;i++) menuZombies.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,size:38+Math.random()*22,rot:Math.random()*Math.PI*2,rotV:(Math.random()-0.5)*0.012,alpha:0.07+Math.random()*0.11});
+function menuLoop(){
+    if(!menuRunning){mctx2.clearRect(0,0,menuCanvas.width,menuCanvas.height);return;}
+    mctx2.clearRect(0,0,menuCanvas.width,menuCanvas.height);
+    menuZombies.forEach(z=>{
+        z.x+=z.vx;z.y+=z.vy;z.rot+=z.rotV;
+        if(z.x<-60)z.x=menuCanvas.width+30; if(z.x>menuCanvas.width+60)z.x=-30;
+        if(z.y<-60)z.y=menuCanvas.height+30; if(z.y>menuCanvas.height+60)z.y=-30;
+        mctx2.save();mctx2.globalAlpha=z.alpha;mctx2.translate(z.x+z.size/2,z.y+z.size/2);mctx2.rotate(z.rot);
+        mctx2.drawImage(zombieImgMenu,-z.size/2,-z.size/2,z.size,z.size);mctx2.restore();
+    });
+    requestAnimationFrame(menuLoop);
+}
+menuLoop();
+
+/* ══ PANELS ══ */
+function showPanel(id){document.getElementById(id).classList.remove("hidden");}
+function hidePanel(id){document.getElementById(id).classList.add("hidden");}
+
+/* ══ BEST SCORE ══ */
+let bestScore=parseInt(localStorage.getItem("zw_best")||"0");
+function updateBestDisplay(){document.getElementById("bestScoreDisplay").innerText=bestScore.toLocaleString();document.getElementById("settingsBest").innerText=bestScore.toLocaleString();}
+updateBestDisplay();
+function saveBest(s){if(s>bestScore){bestScore=s;localStorage.setItem("zw_best",s);updateBestDisplay();return true;}return false;}
+function resetBest(){bestScore=0;localStorage.removeItem("zw_best");updateBestDisplay();}
+
+/* ══ SETTINGS ══ */
+let volMusic=0.40,volSfx=0.35,difficulty="easy";
+const DIFF={easy:{speedMult:1.0,hpMult:1.0},normal:{speedMult:1.3,hpMult:0.85},hard:{speedMult:1.6,hpMult:0.7}};
+function setVolume(){volMusic=document.getElementById("volMusic").value/100;volSfx=document.getElementById("volSfx").value/100;music.volume=volMusic;}
+function setDiff(d){difficulty=d;["easy","normal","hard"].forEach(x=>document.getElementById("diff-"+x).classList.toggle("active",x===d));}
+
+/* ══ CANVAS ══ */
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+const mmCvs=document.getElementById("minimap");
+const mctx=mmCvs.getContext("2d");
+mmCvs.width=mmCvs.height=88;
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+resize(); window.addEventListener("resize",resize);
+
+/* ══ ASSETS ══ */
+const playerImg=new Image(); playerImg.src="zombie/img/player1.png";
+const zombieImg=new Image(); zombieImg.src="zombie/img/zombie.png";
+const grassImg=new Image(); grassImg.src="zombie/img/grass.png";
+const shootSound=new Audio("zombie/sound/shot.mp3");
+const hitSound=new Audio("zombie/sound/hit.mp3");
+const music=new Audio("zombie/sound/music.mp3");
+music.loop=true;
+
+/* ══ STATE ══ */
+let gameRunning=false;
+let player,bullets,zombies,particles,pickups,decals;
+let kills,score,worldX,worldY;
+let wave,waveZombiesLeft,waveSpawned,betweenWaves,betweenTimer;
+let level,xp,xpNeeded;
+let shootHeld=false,shootTimer=0;
+let shakeX=0,shakeY=0,shakePow=0;
+let gameStartTime=0;
+let bulletSpeed=8,spreadLevel=0;
+let boss=null;
+// combo
+let comboCount=0,comboTimer=0,maxCombo=0;
+const COMBO_TIME=120; // frames
+// buffs: {speed, rapid, shield}
+let buffs={};
+let buffTimers={speed:0,rapid:0,shield:0};
+const BUFF_DUR=360; // 6 sec @ 60fps
+
+/* ══ ZOMBIE TYPES ══ */
+const ZOMBIE_TYPES=[
+    {name:"normal",speed:1.2,hp:1,size:46,score:10},
+    {name:"fast",  speed:2.4,hp:1,size:36,score:20},
+    {name:"tank",  speed:0.7,hp:4,size:62,score:50},
+];
+
+/* ══ JOYSTICK ══ */
+let joy={x:0,y:0,active:false};
+const base=document.getElementById("joystick"),stick=document.getElementById("stick");
+const JCENTER=65,JRADIUS=40;
+base.addEventListener("touchstart",e=>{e.preventDefault();joy.active=true;},{passive:false});
+base.addEventListener("touchmove",e=>{
+    e.preventDefault();
+    let r=base.getBoundingClientRect(),t=e.touches[0];
+    let dx=t.clientX-(r.left+JCENTER),dy=t.clientY-(r.top+JCENTER),d=Math.sqrt(dx*dx+dy*dy);
+    if(d>JRADIUS){dx=dx/d*JRADIUS;dy=dy/d*JRADIUS;}
+    joy.x=dx;joy.y=dy;
+    stick.style.left=(dx+JCENTER-31)+"px";stick.style.top=(dy+JCENTER-31)+"px";
+},{passive:false});
+base.addEventListener("touchend",e=>{e.preventDefault();joy.x=0;joy.y=0;joy.active=false;stick.style.left=(JCENTER-31)+"px";stick.style.top=(JCENTER-31)+"px";},{passive:false});
+
+/* ══ SHOOT BTN ══ */
+const shootBtn=document.getElementById("shootBtn");
+let shootAngle=0;
+shootBtn.addEventListener("touchstart",e=>{e.preventDefault();shootHeld=true;shootBtn.classList.add("active");},{passive:false});
+shootBtn.addEventListener("touchend",  e=>{e.preventDefault();shootHeld=false;shootBtn.classList.remove("active");},{passive:false});
+shootBtn.addEventListener("touchcancel",e=>{e.preventDefault();shootHeld=false;shootBtn.classList.remove("active");},{passive:false});
+canvas.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    for(let t of e.changedTouches){
+        if(t.clientX>canvas.width*0.4){
+            let dx=t.clientX-canvas.width/2,dy=t.clientY-canvas.height/2;
+            shootAngle=Math.atan2(dy,dx);fireBullet();
+        }
+    }
+},{passive:false});
+
+/* ══ KEYBOARD + MOUSE ══ */
+const keys={};
+window.addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;});
+window.addEventListener("keyup",  e=>{keys[e.key.toLowerCase()]=false;});
+let mouseDown=false;
+canvas.addEventListener("mousedown",e=>{mouseDown=true;let dx=e.clientX-canvas.width/2,dy=e.clientY-canvas.height/2;shootAngle=Math.atan2(dy,dx);fireBullet();});
+canvas.addEventListener("mouseup",()=>mouseDown=false);
+canvas.addEventListener("mousemove",e=>{let dx=e.clientX-canvas.width/2,dy=e.clientY-canvas.height/2;shootAngle=Math.atan2(dy,dx);});
+
+/* ══ INIT ══ */
+function initGame(){
+    let d=DIFF[difficulty];
+    player={hp:100*d.hpMult,maxHp:100*d.hpMult,speed:3};
+    bullets=[];zombies=[];particles=[];pickups=[];decals=[];
+    kills=0;score=0;worldX=0;worldY=0;
+    wave=0;waveZombiesLeft=0;waveSpawned=0;betweenWaves=true;betweenTimer=60;
+    level=1;xp=0;xpNeeded=5;
+    shakePow=0;shootAngle=0;bulletSpeed=8;spreadLevel=0;shootTimer=0;
+    boss=null;comboCount=0;comboTimer=0;maxCombo=0;
+    buffs={};buffTimers={speed:0,rapid:0,shield:0};
+    gameStartTime=Date.now();
+    document.getElementById("bossBar").style.opacity=0;
+    startNextWave();
+}
+
+/* ══ WAVES ══ */
+function startNextWave(){
+    wave++;
+    // every 5th wave spawn boss instead of regular wave
+    if(wave%5===0){
+        waveZombiesLeft=0;waveSpawned=0;betweenWaves=false;
+        spawnBoss();
+        showWaveAnnounce("👹 BOSS HULLÁM!");
+    } else {
+        waveZombiesLeft=5+wave*3;waveSpawned=0;betweenWaves=false;
+        showWaveAnnounce(wave+". HULLÁM!");
+    }
+    document.getElementById("betweenWaveMsg").style.opacity=0;
+}
+function showWaveAnnounce(txt){
+    let el=document.getElementById("waveAnnounce");
+    el.innerText=txt;el.style.opacity=1;
+    setTimeout(()=>el.style.opacity=0,2200);
+}
+
+/* ══ BOSS ══ */
+function spawnBoss(){
+    let d=DIFF[difficulty];
+    let bossHp=30+wave*5;
+    boss={
+        x:canvas.width/2,y:-80,
+        size:110,
+        speed:(0.6+wave*0.04)*d.speedMult,
+        hp:bossHp,maxHp:bossHp,
+        flash:0,pulse:0,
+        score:500+wave*50
+    };
+    document.getElementById("bossBar").style.opacity=1;
+    document.getElementById("bossBarFill").style.width="100%";
+}
+
+/* ══ SPAWN ══ */
+let spawnTimer=0;
+function spawnZombie(){
+    let d=DIFF[difficulty];
+    let angle=Math.random()*Math.PI*2,dist=Math.max(canvas.width,canvas.height)*0.7;
+    let sx=canvas.width/2+Math.cos(angle)*dist,sy=canvas.height/2+Math.sin(angle)*dist;
+    let typePool=[0];
+    if(wave>=2)typePool.push(1);
+    if(wave>=3)typePool.push(2);
+    let t=ZOMBIE_TYPES[typePool[Math.floor(Math.random()*typePool.length)]];
+    zombies.push({x:sx,y:sy,size:t.size,speed:(t.speed+(wave-1)*0.07)*d.speedMult,hp:t.hp,maxHp:t.hp,type:t,flash:0});
+}
+
+/* ══ FIRE ══ */
+function fireBullet(){
+    if(!gameRunning)return;
+    let px=canvas.width/2,py=canvas.height/2;
+    let spd=bulletSpeed+(buffs.rapid?3:0);
+    let shots=spreadLevel>=1?[-1,0,1]:[0];
+    shots.forEach(a=>{
+        let ang=shootAngle+a*(Math.PI/10);
+        bullets.push({x:px,y:py,dx:Math.cos(ang)*spd,dy:Math.sin(ang)*spd,size:7,life:130});
+    });
+    let s=shootSound.cloneNode();s.volume=volSfx;s.play().catch(()=>{});
+}
+
+/* ══ PARTICLES + DECALS ══ */
+function spawnParticles(x,y,color,n){
+    for(let i=0;i<n;i++){
+        let ang=Math.random()*Math.PI*2,spd=1+Math.random()*4;
+        particles.push({x,y,dx:Math.cos(ang)*spd,dy:Math.sin(ang)*spd,r:3+Math.random()*5,color,life:30+Math.random()*25,maxLife:55});
+    }
+}
+function spawnDecal(x,y,r,color){
+    decals.push({x,y,r,color,alpha:0.55,life:600});
+}
+function floatText(text,x,y,color,size){
+    let el=document.createElement("div");
+    el.className="floatText";
+    el.style.left=x+"px";el.style.top=y+"px";el.style.color=color||"#fff";
+    if(size)el.style.fontSize=size;
+    el.innerText=text;document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1100);
+}
+
+/* ══ COMBO ══ */
+const COMBO_LABELS=["","","DOUBLE KILL!","TRIPLE KILL!","QUAD KILL!","PENTA KILL!","RAMPAGE!","GODLIKE!"];
+const COMBO_COLORS=["","","#f1c40f","#e67e22","#e74c3c","#9b59b6","#e74c3c","#ff0000"];
+function registerKill(){
+    comboTimer=COMBO_TIME;
+    comboCount++;
+    if(comboCount>maxCombo)maxCombo=comboCount;
+    if(comboCount>=2){
+        let label=COMBO_LABELS[Math.min(comboCount,COMBO_LABELS.length-1)]||comboCount+"x KILL!";
+        let color=COMBO_COLORS[Math.min(comboCount,COMBO_COLORS.length-1)]||"#e74c3c";
+        let el=document.getElementById("comboDisplay");
+        el.innerText=label;
+        el.style.color=color;
+        el.style.textShadow="0 0 20px "+color;
+        el.style.fontSize=clamp(1.8+comboCount*0.15,5)+"rem";
+        el.style.opacity=1;
+        clearTimeout(el._t);
+        el._t=setTimeout(()=>el.style.opacity=0,1400);
+    }
+    // score multiplier
+    let mult=1+Math.floor(comboCount/3)*0.5;
+    return mult;
+}
+function clamp(v,max){return Math.min(v,max);}
+function updateCombo(){
+    if(comboTimer>0){
+        comboTimer--;
+        if(comboTimer===0){comboCount=0;document.getElementById("multiplierBadge").style.opacity=0;}
+        else if(comboCount>=2){
+            let mult=1+Math.floor(comboCount/3)*0.5;
+            let badge=document.getElementById("multiplierBadge");
+            badge.innerText="x"+mult.toFixed(1);badge.style.opacity=1;
+        }
+    }
+}
+
+/* ══ POWER-UP TYPES ══ */
+const PICKUP_TYPES=[
+    {type:"hp",    icon:"❤️", color:"#2ecc71",  chance:0.35},
+    {type:"speed", icon:"⚡", color:"#3498db",  chance:0.18},
+    {type:"rapid", icon:"🔥", color:"#e67e22",  chance:0.18},
+    {type:"shield",icon:"🛡️", color:"#9b59b6",  chance:0.15},
+    {type:"grenade",icon:"💣",color:"#e74c3c",  chance:0.14},
+];
+function pickupTypeByChance(){
+    let r=Math.random(),acc=0;
+    for(let pt of PICKUP_TYPES){acc+=pt.chance;if(r<acc)return pt;}
+    return PICKUP_TYPES[0];
+}
+function dropPickup(x,y){
+    let pt=pickupTypeByChance();
+    pickups.push({x,y,r:16,pulse:0,pt});
+}
+function applyPickup(pt){
+    let cx=canvas.width/2,cy=canvas.height/2;
+    if(pt.type==="hp"){
+        player.hp=Math.min(player.maxHp,player.hp+30);
+        floatText("+30 HP",cx,cy-60,"#2ecc71");
+    } else if(pt.type==="speed"){
+        buffs.speed=true;buffTimers.speed=BUFF_DUR;
+        floatText("⚡ Sebesség!",cx,cy-60,"#3498db");
+    } else if(pt.type==="rapid"){
+        buffs.rapid=true;buffTimers.rapid=BUFF_DUR;
+        floatText("🔥 Rapid-fire!",cx,cy-60,"#e67e22");
+    } else if(pt.type==="shield"){
+        buffs.shield=true;buffTimers.shield=BUFF_DUR;
+        floatText("🛡️ Pajzs!",cx,cy-60,"#9b59b6");
+        flashShield();
+    } else if(pt.type==="grenade"){
+        grenadeBlast(cx,cy);
+        floatText("💣 BOOM!",cx,cy-80,"#e74c3c","1.4rem");
+    }
+}
+function grenadeBlast(cx,cy){
+    let radius=180;
+    spawnParticles(cx,cy,"#e74c3c",25);
+    spawnParticles(cx,cy,"#f39c12",20);
+    triggerShake(10);
+    // kill zombies in radius
+    let rem=new Set();
+    zombies.forEach((z,zi)=>{
+        let dx=z.x+z.size/2-cx,dy=z.y+z.size/2-cy;
+        if(Math.sqrt(dx*dx+dy*dy)<radius){
+            rem.add(zi);kills++;score+=z.type.score*2;xp++;checkLevelUp();
+            spawnDecal(z.x+z.size/2,z.y+z.size/2,z.size*0.6,"rgba(120,0,0,0.7)");
+        }
+    });
+    zombies=zombies.filter((_,i)=>!rem.has(i));
+    // damage boss in radius too
+    if(boss){
+        let dx=boss.x-cx,dy=boss.y-cy;
+        if(Math.sqrt(dx*dx+dy*dy)<radius+boss.size/2){boss.hp-=8;boss.flash=12;}
+    }
+}
+
+/* ══ BUFF HUD ══ */
+function renderBuffs(){
+    let el=document.getElementById("buffsHud");
+    el.innerHTML="";
+    ["speed","rapid","shield"].forEach(k=>{
+        if(!buffs[k])return;
+        let icon={speed:"⚡",rapid:"🔥",shield:"🛡️"}[k];
+        let col={speed:"#3498db",rapid:"#e67e22",shield:"#9b59b6"}[k];
+        let pct=(buffTimers[k]/BUFF_DUR*100).toFixed(0);
+        el.innerHTML+=`<div class="buff-chip">${icon}<div class="buff-bar"><div class="buff-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+    });
+}
+
+/* ══ LEVEL UP ══ */
+function checkLevelUp(){
+    while(xp>=xpNeeded){xp-=xpNeeded;level++;xpNeeded=Math.floor(xpNeeded*1.5);applyLevelBonus();showLevelUpMsg();}
+}
+function applyLevelBonus(){
+    let b=level%4,cx=canvas.width/2,cy=canvas.height/2;
+    if(b===1){player.maxHp+=20;player.hp=Math.min(player.hp+20,player.maxHp);floatText("+MaxHP!",cx,cy-40,"#2ecc71");}
+    if(b===2){bulletSpeed=Math.min(bulletSpeed+1,14);floatText("Gyorsabb golyó!",cx,cy-40,"#f1c40f");}
+    if(b===3){spreadLevel++;floatText("Szórt lövés!",cx,cy-40,"#e67e22");}
+    if(b===0){player.speed=Math.min(player.speed+0.5,5);floatText("Gyorsabb!",cx,cy-40,"#3498db");}
+}
+function showLevelUpMsg(){let el=document.getElementById("levelUpMsg");el.style.opacity=1;setTimeout(()=>el.style.opacity=0,1800);}
+
+/* ══ SHAKE + FLASH ══ */
+function triggerShake(p){shakePow=Math.max(shakePow,p);}
+function flashDamage(){let el=document.getElementById("dmgFlash");el.style.background="rgba(231,76,60,0.38)";setTimeout(()=>el.style.background="rgba(231,76,60,0)",160);}
+function flashShield(){let el=document.getElementById("shieldFlash");el.style.background="rgba(52,152,219,0.3)";setTimeout(()=>el.style.background="rgba(52,152,219,0)",200);}
+
+/* ══ UPDATE ══ */
+const SPAWN_BASE=90;
+function update(){
+    if(!gameRunning)return;
+
+    // keyboard
+    let kx=0,ky=0;
+    if(keys["w"]||keys["arrowup"])ky=-1;if(keys["s"]||keys["arrowdown"])ky=1;
+    if(keys["a"]||keys["arrowleft"])kx=-1;if(keys["d"]||keys["arrowright"])kx=1;
+    let spd=player.speed*(buffs.speed?1.7:1);
+    if(kx||ky){let kd=Math.sqrt(kx*kx+ky*ky);worldX-=kx/kd*spd;worldY-=ky/kd*spd;}
+    if(joy.active&&(joy.x||joy.y)){let jd=Math.sqrt(joy.x*joy.x+joy.y*joy.y);worldX-=(joy.x/jd)*spd*(jd/40);worldY-=(joy.y/jd)*spd*(jd/40);}
+
+    // auto-shoot
+    let fireRate=buffs.rapid?8:(spreadLevel>=1?18:14);
+    if(shootHeld||mouseDown){
+        shootTimer--;
+        if(shootTimer<=0){
+            let best=null,bestD=Infinity;
+            zombies.forEach(z=>{let dx=z.x-canvas.width/2,dy=z.y-canvas.height/2,d=Math.sqrt(dx*dx+dy*dy);if(d<bestD){bestD=d;best=z;}});
+            if(boss){let dx=boss.x-canvas.width/2,dy=boss.y-canvas.height/2,d=Math.sqrt(dx*dx+dy*dy);if(d<bestD){best={x:boss.x,y:boss.y};}}
+            if(best)shootAngle=Math.atan2(best.y-canvas.height/2,best.x-canvas.width/2);
+            fireBullet();shootTimer=fireRate;
+        }
+    }
+
+    // shake
+    if(shakePow>0){shakeX=(Math.random()-0.5)*shakePow*2;shakeY=(Math.random()-0.5)*shakePow*2;shakePow=Math.max(0,shakePow-0.9);}
+    else{shakeX=0;shakeY=0;}
+
+    // buff timers
+    ["speed","rapid","shield"].forEach(k=>{
+        if(buffTimers[k]>0){buffTimers[k]--;if(buffTimers[k]===0)buffs[k]=false;}
+    });
+    renderBuffs();
+    updateCombo();
+
+    // spawn regular zombies
+    if(!betweenWaves&&waveSpawned<waveZombiesLeft){
+        spawnTimer--;
+        let si=Math.max(20,SPAWN_BASE-wave*5);
+        if(spawnTimer<=0){spawnZombie();waveSpawned++;spawnTimer=si;}
+    }
+
+    // boss movement
+    let cx=canvas.width/2,cy=canvas.height/2;
+    if(boss){
+        boss.pulse+=0.05;boss.flash=Math.max(0,boss.flash-1);
+        let dx=cx-boss.x,dy=cy-boss.y,d=Math.sqrt(dx*dx+dy*dy);
+        boss.x+=dx/d*boss.speed;boss.y+=dy/d*boss.speed;
+        // boss damage
+        if(d<boss.size/2+30){
+            if(buffs.shield){buffs.shield=false;buffTimers.shield=0;flashShield();floatText("🛡️ Pajzs elnyeli!",cx,cy-60,"#9b59b6");triggerShake(4);}
+            else{player.hp-=0.6;triggerShake(5);flashDamage();}
+        }
+        document.getElementById("bossBarFill").style.width=(boss.hp/boss.maxHp*100)+"%";
+    }
+
+    // between waves (regular)
+    if(!betweenWaves&&waveZombiesLeft>0&&waveSpawned>=waveZombiesLeft&&zombies.length===0&&!boss){
+        betweenWaves=true;betweenTimer=180;document.getElementById("betweenWaveMsg").style.opacity=1;
+    }
+    // boss wave done
+    if(!betweenWaves&&wave%5===0&&!boss&&waveZombiesLeft===0){
+        betweenWaves=true;betweenTimer=180;document.getElementById("betweenWaveMsg").style.opacity=1;
+        document.getElementById("bossBar").style.opacity=0;
+    }
+    if(betweenWaves&&betweenTimer>0)betweenTimer--;
+    if(betweenWaves&&betweenTimer===0)startNextWave();
+
+    // bullets
+    bullets=bullets.filter(b=>{b.x+=b.dx;b.y+=b.dy;b.life--;return b.life>0&&b.x>-50&&b.x<canvas.width+50&&b.y>-50&&b.y<canvas.height+50;});
+
+    // zombies
+    zombies.forEach(z=>{
+        let dx=cx-z.x,dy=cy-z.y,d=Math.sqrt(dx*dx+dy*dy);
+        z.x+=dx/d*z.speed;z.y+=dy/d*z.speed;if(z.flash>0)z.flash--;
+        if(d<z.size/2+30){
+            if(buffs.shield){buffs.shield=false;buffTimers.shield=0;flashShield();floatText("🛡️ Pajzs!",cx,cy-60,"#9b59b6");triggerShake(3);}
+            else{player.hp-=z.type.name==="tank"?0.4:0.2;triggerShake(3);flashDamage();}
+        }
+    });
+
+    // bullet vs zombie
+    let remB=new Set(),remZ=new Set();
+    bullets.forEach((b,bi)=>{
+        // vs boss
+        if(boss&&!remB.has(bi)){
+            let dx=b.x-boss.x,dy=b.y-boss.y;
+            if(Math.sqrt(dx*dx+dy*dy)<boss.size/2+b.size){
+                remB.add(bi);boss.hp--;boss.flash=8;
+                spawnParticles(b.x,b.y,"#e74c3c",5);
+                if(boss.hp<=0){
+                    score+=boss.score;kills+=5;xp+=8;checkLevelUp();
+                    spawnParticles(boss.x,boss.y,"#e74c3c",30);
+                    spawnParticles(boss.x,boss.y,"#f39c12",20);
+                    spawnDecal(boss.x,boss.y,boss.size*0.7,"rgba(140,0,0,0.65)");
+                    dropPickup(boss.x,boss.y); dropPickup(boss.x+40,boss.y-30);
+                    floatText("BOSS LEGYŐZVE! +"+boss.score,cx,cy-80,"#e74c3c","1.3rem");
+                    triggerShake(12);boss=null;
+                    document.getElementById("bossBar").style.opacity=0;
+                }
+                return;
+            }
+        }
+        // vs regular zombies
+        zombies.forEach((z,zi)=>{
+            if(remZ.has(zi)||remB.has(bi))return;
+            let dx=b.x-z.x-z.size/2,dy=b.y-z.y-z.size/2;
+            if(Math.sqrt(dx*dx+dy*dy)<z.size/2+b.size){
+                remB.add(bi);z.hp--;z.flash=6;
+                if(z.hp<=0){
+                    remZ.add(zi);
+                    let mult=registerKill();
+                    score+=Math.round((z.type.score+(wave-1)*5)*mult);
+                    xp++;checkLevelUp();
+                    spawnParticles(z.x+z.size/2,z.y+z.size/2,"#2ecc71",10);
+                    spawnDecal(z.x+z.size/2,z.y+z.size/2,z.size*0.5,"rgba(100,0,0,0.6)");
+                    if(Math.random()<0.18)dropPickup(z.x+z.size/2,z.y+z.size/2);
+                    let h=hitSound.cloneNode();h.volume=volSfx;h.play().catch(()=>{});
+                }else{spawnParticles(b.x,b.y,"#f39c12",4);}
+            }
+        });
+    });
+    bullets=bullets.filter((_,i)=>!remB.has(i));
+    zombies=zombies.filter((_,i)=>!remZ.has(i));
+
+    // pickups
+    pickups=pickups.filter(p=>{
+        p.pulse+=0.1;
+        let dx=cx-p.x,dy=cy-p.y;
+        if(Math.sqrt(dx*dx+dy*dy)<p.r+28){applyPickup(p.pt);return false;}
+        return true;
+    });
+
+    // particles
+    particles=particles.filter(p=>{p.x+=p.dx;p.y+=p.dy;p.dx*=0.88;p.dy*=0.88;p.life--;return p.life>0;});
+
+    // decals fade
+    decals=decals.filter(d=>{d.life--;d.alpha=Math.max(0,d.alpha-0.0008);return d.life>0;});
+
+    // HUD
+    let hpPct=Math.max(0,player.hp/player.maxHp*100);
+    document.getElementById("hpFill").style.width=hpPct+"%";
+    document.getElementById("hpFill").style.background=hpPct>50?"#2ecc71":hpPct>25?"#e67e22":"#e74c3c";
+    document.getElementById("waveTag").innerText=wave+". hullám";
+    document.getElementById("hudKills").innerText="☠️ "+kills;
+    document.getElementById("hudLevel").innerText="Lv "+level;
+    document.getElementById("hudScore").innerText=score.toLocaleString();
+    document.getElementById("xpBar").style.width=(xp/xpNeeded*100)+"%";
+
+    if(player.hp<=0)gameOver();
+}
+
+/* ══ DRAW ══ */
+const TILE=256;
+function drawMap(){
+    if(!grassImg.complete)return;
+    let ox=worldX%TILE,oy=worldY%TILE;
+    for(let tx=-1;tx<canvas.width/TILE+2;tx++)
+        for(let ty=-1;ty<canvas.height/TILE+2;ty++)
+            ctx.drawImage(grassImg,tx*TILE+ox,ty*TILE+oy,TILE,TILE);
+}
+
+function draw(){
+    ctx.save();
+    ctx.translate(shakeX,shakeY);
+    ctx.clearRect(-10,-10,canvas.width+20,canvas.height+20);
+    drawMap();
+
+    let cx=canvas.width/2,cy=canvas.height/2;
+
+    // decals (blood on ground)
+    decals.forEach(d=>{
+        ctx.save();ctx.globalAlpha=d.alpha;ctx.fillStyle=d.color;
+        ctx.beginPath();ctx.ellipse(d.x,d.y,d.r,d.r*0.6,0,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+    });
+
+    // pickups
+    pickups.forEach(p=>{
+        let pulse=Math.sin(p.pulse)*3;
+        ctx.save();
+        ctx.shadowColor=p.pt.color;ctx.shadowBlur=18;
+        ctx.fillStyle=p.pt.color;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r+pulse,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#fff";ctx.font="bold 14px Arial";
+        ctx.textAlign="center";ctx.textBaseline="middle";
+        ctx.fillText(p.pt.icon,p.x,p.y);
+        ctx.restore();
+    });
+
+    // zombies
+    zombies.forEach(z=>{
+        ctx.save();if(z.flash>0)ctx.filter="brightness(3.5)";
+        ctx.drawImage(zombieImg,z.x,z.y,z.size,z.size);ctx.restore();
+        if(z.type.name==="tank"){
+            ctx.fillStyle="#222";ctx.fillRect(z.x,z.y-10,z.size,5);
+            ctx.fillStyle="#8e44ad";ctx.fillRect(z.x,z.y-10,z.size*(z.hp/z.maxHp),5);
+        }
+    });
+
+    // boss
+    if(boss){
+        ctx.save();
+        let glow=Math.sin(boss.pulse)*8+12;
+        ctx.shadowColor="#e74c3c";ctx.shadowBlur=glow;
+        if(boss.flash>0)ctx.filter="brightness(3)";
+        // scale to boss size
+        ctx.drawImage(zombieImg,boss.x-boss.size/2,boss.y-boss.size/2,boss.size,boss.size);
+        ctx.restore();
+        // boss HP bar above it
+        let bw=boss.size+10,bh=8;
+        let bx=boss.x-bw/2,by=boss.y-boss.size/2-18;
+        ctx.fillStyle="rgba(0,0,0,0.6)";ctx.fillRect(bx,by,bw,bh);
+        ctx.fillStyle="#e74c3c";ctx.fillRect(bx,by,bw*(boss.hp/boss.maxHp),bh);
+        ctx.fillStyle="rgba(255,255,255,0.6)";ctx.font="bold 10px Arial";
+        ctx.textAlign="center";ctx.textBaseline="middle";
+        ctx.fillText("👹 BOSS",boss.x,by-8);
+    }
+
+    // bullets (with glow)
+    ctx.shadowColor="#f1c40f";ctx.shadowBlur=12;ctx.fillStyle="#f1c40f";
+    bullets.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,Math.PI*2);ctx.fill();});
+    ctx.shadowBlur=0;
+
+    // particles
+    particles.forEach(p=>{
+        ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+
+    // shield ring around player
+    if(buffs.shield){
+        ctx.save();
+        let pulse=Math.sin(Date.now()*0.006)*4;
+        ctx.strokeStyle="#9b59b6";ctx.lineWidth=3;ctx.globalAlpha=0.7;
+        ctx.shadowColor="#9b59b6";ctx.shadowBlur=15;
+        ctx.beginPath();ctx.arc(cx,cy,44+pulse,0,Math.PI*2);ctx.stroke();
+        ctx.restore();
+    }
+
+    // player
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(shootAngle+Math.PI/2);
+    ctx.drawImage(playerImg,-30,-30,60,60);ctx.restore();
+
+    ctx.restore();
+    drawMinimap();
+}
+
+function drawMinimap(){
+    mctx.clearRect(0,0,88,88);
+    mctx.fillStyle="rgba(0,0,0,0.65)";mctx.fillRect(0,0,88,88);
+    let scale=88/Math.max(canvas.width,canvas.height)*0.5,mcx=44,mcy=44;
+    mctx.fillStyle="#3498db";mctx.beginPath();mctx.arc(mcx,mcy,4,0,Math.PI*2);mctx.fill();
+    mctx.fillStyle="#e74c3c";
+    zombies.forEach(z=>{
+        let mx=mcx+(z.x-canvas.width/2)*scale,my=mcy+(z.y-canvas.height/2)*scale;
+        if(mx>0&&mx<88&&my>0&&my<88){mctx.beginPath();mctx.arc(mx,my,3,0,Math.PI*2);mctx.fill();}
+    });
+    if(boss){
+        mctx.fillStyle="#ff4444";
+        let mx=mcx+(boss.x-canvas.width/2)*scale,my=mcy+(boss.y-canvas.height/2)*scale;
+        if(mx>0&&mx<88&&my>0&&my<88){mctx.beginPath();mctx.arc(mx,my,6,0,Math.PI*2);mctx.fill();}
+    }
+}
+
+/* ══ GAME OVER ══ */
+function gameOver(){
+    gameRunning=false;music.pause();music.currentTime=0;
+    let elapsed=Math.floor((Date.now()-gameStartTime)/1000);
+    let mins=Math.floor(elapsed/60),secs=elapsed%60;
+    let isNew=saveBest(score);
+    document.getElementById("goScore").innerText=score.toLocaleString();
+    document.getElementById("goBest").innerText=bestScore.toLocaleString();
+    document.getElementById("goWave").innerText=wave+". hullám";
+    document.getElementById("goKills").innerText=kills+" zombi";
+    document.getElementById("goCombo").innerText=maxCombo+"x";
+    document.getElementById("goLevel").innerText=level+". szint";
+    document.getElementById("goTime").innerText=mins>0?mins+"p "+secs+"s":secs+"s";
+    document.getElementById("goNewBest").classList.toggle("hidden",!isNew);
+    document.getElementById("gameOverScreen").classList.remove("hidden");
+}
+
+/* ══ START / RESTART / MENU ══ */
+function startGame(){
+    menuRunning=false;
+    document.getElementById("mainMenu").classList.add("hidden");
+    music.volume=volMusic;music.play().catch(()=>{});
+    gameRunning=true;initGame();gameLoop();
+}
+function restartGame(){
+    document.getElementById("gameOverScreen").classList.add("hidden");
+    music.currentTime=0;music.play().catch(()=>{});
+    gameRunning=true;initGame();gameLoop();
+}
+function backToMenu(){
+    document.getElementById("gameOverScreen").classList.add("hidden");
+    music.pause();music.currentTime=0;
+    menuRunning=true;menuLoop();updateBestDisplay();
+    document.getElementById("mainMenu").classList.remove("hidden");
+}
+function gameLoop(){update();draw();if(gameRunning)requestAnimationFrame(gameLoop);}
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zombie War</title>
+
+<style>
+body{margin:0;overflow:hidden;background:#111;color:white;font-family:Arial;}
+canvas{display:block}
+
+.overlay{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    display:flex;justify-content:center;align-items:center;
+    flex-direction:column;background:rgba(0,0,0,0.9);
+}
+
+button{
+    padding:15px 40px;margin:10px;
+    font-size:20px;border:none;border-radius:10px;
+    background:#2ecc71;color:white;
+}
+
+#hud{position:absolute;top:10px;left:10px}
+
+#joystick{
+    position:absolute;bottom:40px;left:40px;
+    width:120px;height:120px;border-radius:50%;
+    background:rgba(255,255,255,0.1);
+}
+#stick{
+    position:absolute;width:60px;height:60px;
+    border-radius:50%;background:rgba(255,255,255,0.4);
+    top:30px;left:30px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="mainMenu" class="overlay">
+    <h1>🧟 Zombie War</h1>
+    <button onclick="startGame()">Play</button>
+</div>
+
+<div id="hud">HP: 100 | Kills: 0</div>
+
+<canvas id="gameCanvas"></canvas>
+<div id="joystick"><div id="stick"></div></div>
+
+<script>
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;
+canvas.height=innerHeight;
+
+// IMAGES
+const playerImg=new Image(); playerImg.src="zombie/img/player1.png";
+const zombieImg=new Image(); zombieImg.src="zombie/img/zombie.png";
+const grass=new Image(); grass.src="zombie/img/grass.png";
+
+// 🔊 SOUNDS
+const shootSound=new Audio("zombie/sound/shoot.mp3");
+const hitSound=new Audio("zombie/sound/hit.mp3");
+const music=new Audio("zombie/sound/music.mp3");
+music.loop=true;
+
+let volume=0.5;
+
+// GAME
+let player={hp:100};
+let bullets=[], zombies=[], kills=0;
+let worldX=0, worldY=0;
+let joy={x:0,y:0,active:false};
+
+// START
+function startGame(){
+    document.getElementById("mainMenu").style.display="none";
+
+    // mobil miatt itt kell indítani
+    music.volume=volume;
+    music.play().catch(()=>{});
+
+    gameLoop();
+}
+
+// SPAWN
+setInterval(()=>{
+    zombies.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        size:50,
+        speed:1
+    });
+},2000);
+
+// JOYSTICK
+const stick=document.getElementById("stick");
+const base=document.getElementById("joystick");
+
+base.addEventListener("touchstart",()=>joy.active=true);
+base.addEventListener("touchmove",e=>{
+    let r=base.getBoundingClientRect();
+    let t=e.touches[0];
+    joy.x=t.clientX-(r.left+60);
+    joy.y=t.clientY-(r.top+60);
+    let d=Math.sqrt(joy.x**2+joy.y**2);
+    if(d>40){joy.x=joy.x/d*40;joy.y=joy.y/d*40;}
+    stick.style.left=(joy.x+30)+"px";
+    stick.style.top=(joy.y+30)+"px";
+});
+base.addEventListener("touchend",()=>{
+    joy.x=0;joy.y=0;joy.active=false;
+    stick.style.left="30px";stick.style.top="30px";
+});
+
+// SHOOT + SOUND
+canvas.addEventListener("touchstart",e=>{
+    let t=e.touches[0];
+
+    let px=canvas.width/2;
+    let py=canvas.height/2;
+
+    let dx=t.clientX-px;
+    let dy=t.clientY-py;
+
+    let d=Math.sqrt(dx*dx+dy*dy);
+
+    bullets.push({x:px,y:py,dx:dx/d*6,dy:dy/d*6,size:8});
+
+    // 🔊 SHOOT
+    let s=shootSound.cloneNode();
+    s.volume=volume;
+    s.play();
+});
+
+// COLLISION
+function hit(a,b){
+    return a.x<b.x+b.size && a.x+a.size>b.x &&
+           a.y<b.y+b.size && a.y+a.size>b.y;
+}
+
+// UPDATE
+function update(){
+    if(joy.active){
+        worldX-=joy.x*0.1;
+        worldY-=joy.y*0.1;
+    }
+
+    bullets.forEach(b=>{
+        b.x+=b.dx;
+        b.y+=b.dy;
+    });
+
+    zombies.forEach(z=>{
+        let dx=canvas.width/2-z.x;
+        let dy=canvas.height/2-z.y;
+        let d=Math.sqrt(dx*dx+dy*dy);
+        z.x+=dx/d*z.speed;
+        z.y+=dy/d*z.speed;
+
+        if(hit({x:canvas.width/2,y:canvas.height/2,size:60},z)){
+            player.hp-=0.2;
+        }
+    });
+
+    bullets.forEach((b,bi)=>{
+        zombies.forEach((z,zi)=>{
+            if(hit(b,z)){
+                zombies.splice(zi,1);
+                bullets.splice(bi,1);
+                kills++;
+
+                // 🔊 HIT
+                let h=hitSound.cloneNode();
+                h.volume=volume;
+                h.play();
+            }
+        });
+    });
+
+    document.getElementById("hud").innerText=
+        "HP: "+Math.floor(player.hp)+" | Kills: "+kills;
+
+    if(player.hp<=0){
+        alert("Game Over");
+        location.reload();
+    }
+}
+
+// MAP
+function drawMap(){
+    let size=256;
+    for(let x=-1;x<canvas.width/size+2;x++){
+        for(let y=-1;y<canvas.height/size+2;y++){
+            ctx.drawImage(grass,(x*size+worldX%size),(y*size+worldY%size),size,size);
+        }
+    }
+}
+
+// DRAW
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    drawMap();
+
+    ctx.drawImage(playerImg,canvas.width/2-30,canvas.height/2-30,60,60);
+
+    ctx.fillStyle="yellow";
+    bullets.forEach(b=>{
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    zombies.forEach(z=>{
+        ctx.drawImage(zombieImg,z.x,z.y,z.size,z.size);
+    });
+}
+
+// LOOP
+function gameLoop(){
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
